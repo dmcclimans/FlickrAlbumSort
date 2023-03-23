@@ -1,7 +1,7 @@
 FlickrAlbumSort License Information
 ====================================
 
-2023-03-18
+2023-03-23
 
 FlickrAlbumSort is licensed under the MIT license. You may use the FlickrAlbumSort
 application in any way you like. You may copy, distribute and modify the FlickrAlbumSort

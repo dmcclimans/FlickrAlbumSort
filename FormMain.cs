@@ -32,6 +32,10 @@ namespace FlickrAlbumSort
 
         private bool FormIsLoaded { get; set; } = false;
 
+        // The number of times we will try some Flickr commands before giving up. This only applies to
+        // commands that can take a long time.
+        private const int FlickrMaxTries = 3;
+
         // Checkbox that is put in the header of the dgvPhotosets.
         private CheckBox cbHeader;
 
@@ -40,18 +44,18 @@ namespace FlickrAlbumSort
 
         // The list of photosets (albums) returned by GetAlbums, and used during a search.
         // This property is set in the foreground thread, and is read but not changed by the
-        // background thread. It is not changed by the foreground thread while the background 
+        // background thread. It is not changed by the foreground thread while the background
         // thread is active.
         private SortableBindingList<Photoset> PhotosetList { get; set; }
 
         // The following properties are used to communicate from the background thread to the
-        // foreground UI thread. They are set in the background thread, and not touched 
-        // by the foreground thread until the background thread has completed. 
+        // foreground UI thread. They are set in the background thread, and not touched
+        // by the foreground thread until the background thread has completed.
 
         // Error message returned from BG search methods. Empty if no error.
         private string BGErrorMessage { get; set; } = "";
 
-        // List of search status strings. List has same size as PhotosetList. 
+        // List of search status strings. List has same size as PhotosetList.
         private List<string> BGStatusList { get; set; }
 
 
@@ -157,8 +161,7 @@ namespace FlickrAlbumSort
                 return;
             }
 
-            Stopwatch RunTimer = new Stopwatch();
-            RunTimer.Start();
+            Stopwatch RunTimer = Stopwatch.StartNew();
 
             bool sortSuccessful = false;
             sortSuccessful = SortPhotosets();
@@ -186,7 +189,7 @@ namespace FlickrAlbumSort
                     // filter a Photoset.GetPhotos call by date.
                     // This error message is not currently returned by my code when searching albums, so
                     // you will never see it. But there is some disabled (ifdef) code in BGSearchPhotosets
-                    // that could be enabled to return this error message.
+                    // that could be enabled to return this error.
                     MessageBox.Show("Too many photos found.\r\n\r\n" +
                         "Flickr limits the number of photos returned from a search to about 4000. " +
                         $"One of the album searches found {count} photos and the resulting photo list is not accurate.\r\n\r\n" +
@@ -300,7 +303,32 @@ namespace FlickrAlbumSort
                 FlickrNet.PhotoSearchExtras PhotosetExtras = 0;
                 do
                 {
-                    photoSets = f.PhotosetsGetList(AccountUser.UserId, page, perPage, PhotosetExtras);
+                    bool success = false;
+                    for (int attempt = 0; attempt < FlickrMaxTries && !success; attempt++)
+                    {
+                        try
+                        {
+                            photoSets = f.PhotosetsGetList(AccountUser.UserId, page, perPage, PhotosetExtras);
+                            success = true;
+                        }
+                        catch (FlickrNet.FlickrException ex)
+                        {
+                            // Save the *first* error message for display, not subsequent ones.
+                            if (attempt == 0)
+                                BGErrorMessage = "Album search failed. Flickr error: " + ex.Message;
+                        }
+                        catch (Exception ex)
+                        {
+                            if (attempt == 0)
+                                BGErrorMessage = "Album search failed. Unexpected Flickr error: " + ex.Message;
+                        }
+                    }
+                    if (!success)
+                    {
+                        return;
+                    }
+                    BGErrorMessage = "";
+
                     foreach (FlickrNet.Photoset ps in photoSets)
                     {
                         PhotosetList.Add(new Photoset(ps));
@@ -313,7 +341,12 @@ namespace FlickrAlbumSort
             }
             catch (FlickrNet.FlickrException ex)
             {
-                BGErrorMessage = "Album search failed. Error: " + ex.Message;
+                BGErrorMessage = "Album search failed. Flickr error: " + ex.Message;
+                return;
+            }
+            catch (Exception ex)
+            {
+                BGErrorMessage = "Album search failed. Unexpected error: " + ex.Message;
                 return;
             }
         }
@@ -378,7 +411,7 @@ namespace FlickrAlbumSort
                     {
                         BGStatusList[indexPhotoset] = "Already sorted";
                     }
-                    else 
+                    else
                     {
                         success = SortPhotos(f, photoset.PhotosetId, photoList);
                         if (!success)
@@ -423,16 +456,42 @@ namespace FlickrAlbumSort
 
                 try
                 {
-                    photoCollection = f.PhotosetsGetPhotos(PhotosetId, SearchExtras, page, perpage);
+                    // Try searching Flickr up to FlickrMaxTries times
+                    bool success = false;
+                    for (int attempt = 0; attempt < FlickrMaxTries && !success; attempt++)
+                    {
+                        try
+                        {
+                            photoCollection = f.PhotosetsGetPhotos(PhotosetId, SearchExtras, page, perpage);
+                            success = true;
+                        }
+                        catch (FlickrNet.FlickrException ex)
+                        {
+                            // Save the *first* error message for display, not subsequent ones.
+                            if (attempt == 0)
+                                BGErrorMessage = "Search failed. Flickr error: " + ex.Message;
+                        }
+                        catch (Exception ex)
+                        {
+                            // Save the *first* error message for display, not subsequent ones.
+                            if (attempt == 0)
+                                BGErrorMessage = "Search failed. Unexpected Flickr error: " + ex.Message;
+                        }
+                    }
+                    if (!success)
+                    {
+                        return false;
+                    }
+                    BGErrorMessage = "";
 #if false
-                            // It is not clear from the documentation whether the limit of 4000 photos per search applies
-                            // to album searches. If an album has more than 4000 photos, is the result of GetPhotos
-                            // accurate? I assume that it is. If this turns out to be false, you can enable this code.
-                            if (photoCollection.Total > 3999)
-                            {
-                                SortErrorMessage = $"Too many photos ({photoCollection.Total}) in album {photoset.Title}";
-                                return;
-                            }
+                    // It is not clear from the documentation whether the limit of 4000 photos per search applies
+                    // to album searches. If an album has more than 4000 photos, is the result of GetPhotos
+                    // accurate? I assume that it is. If this turns out to be false, you can enable this code.
+                    if (photoCollection.Total > 3999)
+                    {
+                        BGErrorMessage = $"Too many photos ({photoCollection.Total}) in album {photoset.Title}";
+                        return false;
+                    }
 #endif
                     foreach (FlickrNet.Photo flickrPhoto in photoCollection)
                     {
@@ -442,12 +501,17 @@ namespace FlickrAlbumSort
                 }
                 catch (FlickrNet.FlickrException ex)
                 {
-                    BGErrorMessage = "Getting photo metadata failed. Error: " + ex.Message;
+                    BGErrorMessage = "Getting photo metadata failed. Flickr error: " + ex.Message;
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    BGErrorMessage = "Search failed. Unexpected error: " + ex.Message;
                     return false;
                 }
             }
             while (page <= photoCollection.Pages);
-            
+
             return true;
         }
 
@@ -465,17 +529,34 @@ namespace FlickrAlbumSort
                 SortedPhotoIDs[i] = photoList[i].PhotoId.ToString();
             }
 
-
-            try
+            // Try sorting up to FlickrMaxTries times
+            bool success = false;
+            for (int attempt = 0; attempt < FlickrMaxTries && !success; attempt++)
             {
-                // Send list to flickr.
-                f.PhotosetsReorderPhotos(PhotosetId, SortedPhotoIDs);
+                try
+                {
+                    // Send list to flickr.
+                    f.PhotosetsReorderPhotos(PhotosetId, SortedPhotoIDs);
+                    success = true;
+                }
+                catch (FlickrNet.FlickrException ex)
+                {
+                    // Save the *first* error message for display, not subsequent ones.
+                    if (attempt == 0)
+                        BGErrorMessage = "Sort failed. Flickr error: " + ex.Message;
+                }
+                catch (Exception ex)
+                {
+                    // Save the *first* error message for display, not subsequent ones.
+                    if (attempt == 0)
+                        BGErrorMessage = "Sort failed. Unexpected Flickr error: " + ex.Message;
+                }
             }
-            catch (FlickrNet.FlickrException ex)
+            if (!success)
             {
-                BGErrorMessage = "Sort failed. Error: " + ex.Message;
                 return false;
             }
+            BGErrorMessage = "";
 
             return true;
         }
@@ -485,7 +566,7 @@ namespace FlickrAlbumSort
         //  <0 if A<B
         //  0 if A==B
         //  +1 if A>B
-        // If an object is null, it is treated as less. 
+        // If an object is null, it is treated as less.
         // If a title is null, it is treated as less.
         private int PhotoCompare(FlickrNet.Photo A, FlickrNet.Photo B)
         {
@@ -501,7 +582,7 @@ namespace FlickrAlbumSort
                     return -1;
                 }
             }
-            else if (B == null) 
+            else if (B == null)
             {
                 return 1;
             }

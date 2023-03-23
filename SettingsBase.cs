@@ -6,7 +6,11 @@ using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 
-namespace FlickrAlbumSort
+// Change list:
+// 2023-03-17 Initial version. Adapted from Settings class that did not use inheritance.
+// 2023-03-21 Change namespace to SimpleSettings
+
+namespace SimpleSettings
 {
     /// <summary>
     /// Base class for Settings values.
@@ -15,11 +19,6 @@ namespace FlickrAlbumSort
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Change list:
-    /// 2023-03-17 Initial version adapted from Settings class that does not use inheritance
-    /// </para>
-    /// 
-    /// <para>
     /// This is a base class for defining a Settings class (which defines Settings properties)
     /// It implements common methods used by all Settings classes.
     /// </para>
@@ -27,7 +26,7 @@ namespace FlickrAlbumSort
     /// This class will persist the settings data to an XML file.
     /// </para>
     /// <para>
-    /// The settings filename and path can be specified with the SettingsPath property. If not 
+    /// The settings filename and path can be specified with the SettingsPath property. If not
     /// specified, it defaults to the file name Settings.xml, in the folder AppData/<exe-name>.
     /// </para>
     /// </remarks>
@@ -38,7 +37,7 @@ namespace FlickrAlbumSort
         /// The full path and filename of the settings file.
         /// This property is not persisted and does not trigger property changed.
         /// </summary>
-        /// <remarks> 
+        /// <remarks>
         /// If null or empty string, will use the default value of %AppData%/<exe-file-name>.xml
         /// </remarks>
         [XmlIgnore]
@@ -70,7 +69,7 @@ namespace FlickrAlbumSort
         [XmlIgnore]
         public static string SettingsFolder
         {
-            get 
+            get
             {
                 string path = SettingsPath;
                 return Path.GetDirectoryName(path);
@@ -90,7 +89,7 @@ namespace FlickrAlbumSort
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        
+
         // Implementation of IChangeTracking
         // This property is not persisted and does not trigger property changed.
         /// <summary>
@@ -179,7 +178,7 @@ namespace FlickrAlbumSort
         /// when the object is constructed.
         /// </summary>
         protected virtual void SetDefaults()
-        { 
+        {
         }
 
         /// <summary>

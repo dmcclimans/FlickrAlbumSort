@@ -14,23 +14,12 @@ namespace FlickrAlbumSort
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This class will persist the settings data to an XML file. It will attempt to
-    /// save the settings in the file "FlickrAlbumSortSettings.xml"
-    /// in the folder of the executable. However, if that folder is not writable by the
-    /// program (which will usually be the case if the user has installed it to a folder in
-    /// Program Files), then it will save the data to
-    /// Documents\FlickrAlbumSort\FlickrAlbumSortSettings.xml.
-    /// </para>
-    /// <para>
     /// You should create only once instance of this class. Pass this instance
     /// to any class or method that needs to access the settings.
-    /// Conceptually this class could be a static class without any instantiation. But the .net
-    /// XMLSerializer will not serialize a static class, it will only work with instances.
     /// </para>
     /// </remarks>
-    public class Settings : SettingsBase
+    public class Settings : SimpleSettings.SettingsBase
     {
-
         // Properties that are serialized, and trigger the PropertyChanged events.
 
         // It would be convenient to make this a Dictionary<string, User>. But
@@ -47,13 +36,6 @@ namespace FlickrAlbumSort
         {
             get { return flickrLoginAccountNameValue; }
             set { SetProperty(ref flickrLoginAccountNameValue, value, true); }
-        }
-
-        private string sortOrderValue = "";
-        public string SortOrder
-        {
-            get { return sortOrderValue; }
-            set { SetProperty(ref sortOrderValue, value, true); }
         }
 
         private Point formAboutLocationValue;
@@ -84,6 +66,13 @@ namespace FlickrAlbumSort
             set { SetProperty(ref formMainSizeValue, value, true); }
         }
 
+        private string sortOrderValue = "";
+        public string SortOrder
+        {
+            get { return sortOrderValue; }
+            set { SetProperty(ref sortOrderValue, value, true); }
+        }
+
         // Properties which are not persisted nor trigger property changed.
         // There are none for this project
 
@@ -91,7 +80,7 @@ namespace FlickrAlbumSort
         // Load, Save, and SaveIfChanged methods must be defined.
         public static Settings Load()
         {
-            return SettingsBase.Load<Settings>();
+            return SimpleSettings.SettingsBase.Load<Settings>();
         }
         public bool Save()
         {
@@ -133,7 +122,7 @@ namespace FlickrAlbumSort
                 FlickrLoginAccountList.Add(newUser);
             }
 
-            OnPropertyChanged("FlickrLoginAccountList");
+            OnPropertyChanged(nameof(FlickrLoginAccountList));
             IsChanged = true;
             FlickrLoginAccountList.ResetBindings();
             FlickrLoginAccountName = newUser.UserName;
@@ -152,7 +141,7 @@ namespace FlickrAlbumSort
             else
             {
                 FlickrLoginAccountList.RemoveAt(index);
-                OnPropertyChanged("FlickrLoginAccountList");
+                OnPropertyChanged(nameof(FlickrLoginAccountList));
                 IsChanged = true;
                 FlickrLoginAccountList.ResetBindings();
                 if (FlickrLoginAccountList.Count == 0)

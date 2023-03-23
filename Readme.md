@@ -19,6 +19,7 @@ you add photos, but the operation is simple and quick.
 * [Installation](#installation)
 * [Usage](#usage)
 * [Authentication](#authentication)
+* [Known Issues](#KnownIssues)
 * [License](#license)
 
 ## Features
@@ -95,6 +96,18 @@ paste this code into the **Verifier code** text box in FlickrAlbumSort.
 7. Click the **Complete** button.
 
 8. Close the Add Login Account dialog.
+
+<a name="KnownIssues"></a>
+## Known Issues
+
+**Flickr time-out errors**
+
+You may experience time-out or other communication errors when the program is
+transferring data to and from Flickr. The program will attempt to recover from
+these errors by retrying the commands, but this is not always successful. After 3
+failed attempts the program will display an error message and stop communicating.
+
+If you wish you can repeat the sort to see if Flickr will process the commands.
 
 ## License
 FlickrAlbumSort is licensed under the MIT license. You may use the FlickrAlbumSort
