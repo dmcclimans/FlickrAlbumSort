@@ -3,11 +3,10 @@
 
 FlickrAlbumSort is a Windows application to sort the photos within your Flickr albums.
 
-You can, of course, sort the photos in your albums directly on Flickr, by going to the
-Flickr Organizr and selecting "Arrange". The problem is that Flickr doesn't
-provide the a way to set a persistent sort order for the album. Things done in the
-Organizr are always one-off operations. If you add additional photos to the album they are
-always added to the end.
+Flickr allows you to sort the photos in your albums by going to the Flickr Organizr and
+selecting "Arrange". Unfortunately this does not set a persistent sort order for the
+album. Things done in the Organizr are always one-off operations. If you add additional
+photos to the album they are always added to the end.
 
 FlickrAlbumSort helps you deal with this by providing a simple and convenient way to sort
 multiple albums with just a few mouse clicks. You still have sort your albums every time

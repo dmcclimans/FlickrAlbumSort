@@ -7,8 +7,9 @@ using System.Windows.Forms;
 using System.Xml.Serialization;
 
 // Change list:
-// 2023-03-17 Initial version. Adapted from Settings class that did not use inheritance.
+// 2023-03-17 Initial version. Adapted from Settings class that did not use a base class.
 // 2023-03-21 Change namespace to SimpleSettings
+// 2023-03-24 Add conditional compilation for nulllable types in .net 6.0 (C# 10). Improve error handling
 
 namespace SimpleSettings
 {
@@ -72,14 +73,25 @@ namespace SimpleSettings
             get
             {
                 string path = SettingsPath;
-                return Path.GetDirectoryName(path);
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    return "";
+                }
+                else
+                {
+                    return Path.GetDirectoryName(path) ?? "";
+                }
             }
         }
 
         /// <summary>
         /// Event raised when a property is changed.
         /// </summary>
+#if NET6_0_OR_GREATER
+        public event PropertyChangedEventHandler? PropertyChanged;
+#else
         public event PropertyChangedEventHandler PropertyChanged;
+#endif
 
         /// <summary>
         /// Raise the PropertyChanged event.
@@ -148,37 +160,42 @@ namespace SimpleSettings
                     XmlSerializer serializer = new XmlSerializer(typeof(DerivedType));
                     TextReader reader = new StreamReader(path);
 
+#if NET6_0_OR_GREATER
+                    DerivedType? mySettings = (DerivedType?)serializer.Deserialize(reader);
+#else
                     DerivedType mySettings = (DerivedType)serializer.Deserialize(reader);
+#endif
                     reader.Close();
 
-                    // Success
-                    return mySettings;
+                    if (mySettings != null)
+                    {
+                        // Success
+                        mySettings.AcceptChanges();
+                        return mySettings;
+                    }
                 }
-                catch (Exception e1)
+                catch (Exception exSerializer)
                 {
                     // We failed to deserialize the object
-                    string msg = "Error loading settings from " + path;
-                    msg += " -- " + e1.Message;
-                    MessageBox.Show(msg);
+                    // Throw a new exception with an improved message.
+                    // Note: Creating and throwing a new exception is generally bad practice, because
+                    // you lose the stack trace of the original exception. But in this case the stack
+                    // trace is not particularly useful, as it's down in XmlSerializer. And the 
+                    // original exception does not have the file path. So I create a new exception, with
+                    // the original as the inner exception if the user really needs to see it.
+                    string msg = string.Format("Error loading settings from {0}.\r\n{1}", 
+                        path, exSerializer.Message);
+                    if (exSerializer.InnerException != null)
+                    {
+                        msg += string.Format("\r\n{0}", exSerializer.InnerException.Message);
+                    }
+                    throw new InvalidOperationException(msg, exSerializer);
                 }
             }
 
-            // No file found.
+            // No file found or deserialize failed.
             // Return a default settings object.
-            DerivedType defaultSettings = new DerivedType();
-            defaultSettings.SetDefaults();
-            return defaultSettings;
-        }
-
-        /// <summary>
-        /// Set any default values for a new settings object.
-        /// The base implementation does nothing.
-        /// Can be overridden by derived class if necessary.
-        /// Typically not necessary, as the property initializers will set the default values
-        /// when the object is constructed.
-        /// </summary>
-        protected virtual void SetDefaults()
-        {
+            return new DerivedType();
         }
 
         /// <summary>
@@ -188,21 +205,19 @@ namespace SimpleSettings
         {
             if (IsChanged)
             {
-                if (Save(DerivedType))
-                {
-                    AcceptChanges();
-                }
+                Save(DerivedType);
+                AcceptChanges();
             }
         }
 
         /// <summary>
         /// Implement the Save() method for derived classes
         /// </summary>
-        protected bool Save(System.Type DerivedType)
+        protected void Save(System.Type DerivedType)
         {
+            string path = SettingsFolder;
             try
             {
-                string path = SettingsFolder;
                 // Ensure destination folder exists
                 System.IO.Directory.CreateDirectory(path);
                 path = SettingsPath;
@@ -211,13 +226,23 @@ namespace SimpleSettings
                 TextWriter writer = new StreamWriter(path);
                 serializer.Serialize(writer, this);
                 writer.Close();
-                return true;
+                return;
             }
-            catch (Exception e)
+            catch (Exception exSerializer)
             {
-                string msg = "Error saving settings - " + e.ToString();
-                MessageBox.Show(msg);
-                return false;
+                // Throw a new exception with an improved message.
+                // Note: Creating and throwing a new exception is generally bad practice, because
+                // you lose the stack trace of the original exception. But in this case the stack
+                // trace is not particularly useful, as it's down in XmlSerializer. And the 
+                // original exception does not have the file path. So I create a new exception, with
+                // the original as the inner exception if the user really needs to see it.
+                string msg = string.Format("Error saving settings to {0}.\r\n{1}", 
+                    path, exSerializer.Message);
+                if (exSerializer.InnerException != null)
+                {
+                    msg += string.Format("\r\n{0}", exSerializer.InnerException.Message);
+                }
+                throw new InvalidOperationException(msg, exSerializer);
             }
         }
     }

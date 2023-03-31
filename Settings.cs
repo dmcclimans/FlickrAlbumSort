@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using System.Xml.Serialization;
+using System.Collections.Generic;
 
 namespace FlickrAlbumSort
 {
@@ -36,13 +36,6 @@ namespace FlickrAlbumSort
         {
             get { return flickrLoginAccountNameValue; }
             set { SetProperty(ref flickrLoginAccountNameValue, value, true); }
-        }
-
-        private Point formAboutLocationValue;
-        public Point FormAboutLocation
-        {
-            get { return formAboutLocationValue; }
-            set { SetProperty(ref formAboutLocationValue, value, true); }
         }
 
         private Point formAddLoginAccountLocationValue;
@@ -82,9 +75,9 @@ namespace FlickrAlbumSort
         {
             return SimpleSettings.SettingsBase.Load<Settings>();
         }
-        public bool Save()
+        public void Save()
         {
-            return base.Save(typeof(Settings));
+            base.Save(typeof(Settings));
         }
         public void SaveIfChanged()
         {
@@ -93,7 +86,7 @@ namespace FlickrAlbumSort
 
         // Add a new user or replace an existing user to the FlickrLoginAccountName list.
         // By using this method, we trigger the property changed event and set IsChanged.
-        // If you replace an element in the list directly, these don't occur.
+        // If the user replaces an element in the list directly, these don't occur.
         public void AddReplaceFlickrLoginAccountName(User newUser)
         {
             // Find where to insert in the list.
@@ -130,13 +123,14 @@ namespace FlickrAlbumSort
 
         // Remove a user in the FlickrLoginAccountName list.
         // By using this method, we trigger the property changed event and set IsChanged.
-        public bool RemoveFlickrLoginAccountName(User user)
+        public void RemoveFlickrLoginAccountName(User user)
         {
             int index = FlickrLoginAccountList.ToList<User>().FindIndex(x => x.UserName == user.UserName);
             if (index < 0)
             {
-                MessageBox.Show("Unexpected error. The user '" + user.UserName + "' is not found.");
-                return false;
+                throw new KeyNotFoundException(
+                    string.Format("Unexpected error. The user '{0}' is not found.",
+                    user.UserName));
             }
             else
             {
@@ -156,7 +150,6 @@ namespace FlickrAlbumSort
                 {
                     FlickrLoginAccountName = FlickrLoginAccountList[index - 1].UserName;
                 }
-                return true;
             }
         }
     }

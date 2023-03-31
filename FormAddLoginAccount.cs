@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
+using CenteredMessageBox;
 
 namespace FlickrAlbumSort
 {
@@ -27,6 +28,10 @@ namespace FlickrAlbumSort
             {
                 this.Location = Settings.FormAddLoginAccountLocation;
             }
+            else
+            {
+                CenterToParent();
+            }
 
             labelResult.Visible = false;
         }
@@ -34,7 +39,14 @@ namespace FlickrAlbumSort
         private void FormAddLoginAccount_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Save form location
-            Settings.FormAddLoginAccountLocation = this.Location;
+            if (this.WindowState == FormWindowState.Minimized || this.WindowState == FormWindowState.Maximized)
+            {
+                Settings.FormAddLoginAccountLocation = this.RestoreBounds.Location;
+            }
+            else
+            {
+                Settings.FormAddLoginAccountLocation = this.Location;
+            }
         }
 
         private void AuthenticateButton_Click(object sender, EventArgs e)
@@ -52,7 +64,7 @@ namespace FlickrAlbumSort
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                MessageBoxEx.Show(this, ex.Message);
             }
         }
 
@@ -60,7 +72,7 @@ namespace FlickrAlbumSort
         {
             if (String.IsNullOrEmpty(VerifierTextBox.Text))
             {
-                MessageBox.Show("You must paste the verifier code into the text box above.");
+                MessageBoxEx.Show(this, "Paste the verifier code into the text box above.");
                 return;
             }
 
@@ -86,7 +98,7 @@ namespace FlickrAlbumSort
             }
             catch (FlickrNet.FlickrApiException ex)
             {
-                MessageBox.Show("Failed to get access token./r/n" + ex.Message);
+                MessageBoxEx.Show(this, "Failed to get access token./r/n" + ex.Message);
             }
         }
     }

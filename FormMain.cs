@@ -1,4 +1,5 @@
-﻿using FlickrNet;
+﻿using CenteredMessageBox;
+using FlickrNet;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -32,8 +33,7 @@ namespace FlickrAlbumSort
 
         private bool FormIsLoaded { get; set; } = false;
 
-        // The number of times we will try some Flickr commands before giving up. This only applies to
-        // commands that can take a long time.
+        // The number of times we will try some Flickr commands before giving up.
         private const int FlickrMaxTries = 3;
 
         // Checkbox that is put in the header of the dgvPhotosets.
@@ -66,7 +66,22 @@ namespace FlickrAlbumSort
 
         private void FormMain_Load(object sender, EventArgs e)
         {
-            Settings = Settings.Load();
+            MessageBoxEx.Caption = "FlickrAlbumSort";
+
+            try
+            {
+                Settings = Settings.Load();
+            }
+            catch (Exception ex)
+            {
+                // Use MessageBox here, rather than MessageBoxEx, because the form isn't loaded yet.
+                // MessageBoxEx will center relative to the form's position, which is 0,0, so it will
+                // display the messagebox in the upper left corner. MessageBox will display in the
+                // center of the screen, which is better when no form is visible.
+                MessageBox.Show(ex.Message, "FlickrAlbumSort", MessageBoxButtons.OK);
+                Settings = new Settings();
+            }
+
             if (Settings.FormMainLocation.X != 0 ||
                   Settings.FormMainLocation.Y != 0)
             {
@@ -123,10 +138,25 @@ namespace FlickrAlbumSort
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Save the form location
-            Settings.FormMainLocation = this.Location;
-            Settings.FormMainSize = this.Size;
+            if (this.WindowState == FormWindowState.Minimized || this.WindowState == FormWindowState.Maximized)
+            {
+                Settings.FormMainLocation = this.RestoreBounds.Location;
+                Settings.FormMainSize = this.RestoreBounds.Size;
+            }
+            else
+            {
+                Settings.FormMainLocation = this.Location;
+                Settings.FormMainSize = this.Size;
+            }
 
-            Settings.Save();
+            try
+            {
+                Settings.SaveIfChanged();
+            }
+            catch (Exception ex)
+            {
+                MessageBoxEx.Show(this, ex.Message);
+            }
         }
 
         private void cbHeader_CheckedChanged(object sender, EventArgs e)
@@ -157,7 +187,7 @@ namespace FlickrAlbumSort
             AccountUser = (User)cbLoginAccount.SelectedItem;
             if (AccountUser == null)
             {
-                MessageBox.Show("No account selected");
+                MessageBoxEx.Show(this, "No account selected");
                 return;
             }
 
@@ -171,7 +201,7 @@ namespace FlickrAlbumSort
             {
                 if (String.IsNullOrWhiteSpace(BGErrorMessage))
                 {
-                    MessageBox.Show(String.Format("Sorted {0} albums in {1}:{2:mm}:{3:ss}.",
+                    MessageBoxEx.Show(this, String.Format("Sorted {0} albums in {1}:{2:mm}:{3:ss}.",
                         SortedPhotosetCount,
                         (int)RunTimer.Elapsed.TotalHours, RunTimer.Elapsed, RunTimer.Elapsed));
                 }
@@ -190,14 +220,14 @@ namespace FlickrAlbumSort
                     // This error message is not currently returned by my code when searching albums, so
                     // you will never see it. But there is some disabled (ifdef) code in BGSearchPhotosets
                     // that could be enabled to return this error.
-                    MessageBox.Show("Too many photos found.\r\n\r\n" +
+                    MessageBoxEx.Show(this, "Too many photos found.\r\n\r\n" +
                         "Flickr limits the number of photos returned from a search to about 4000. " +
                         $"One of the album searches found {count} photos and the resulting photo list is not accurate.\r\n\r\n" +
                         "Reduce the size of the search by reducing the number of photos in the albums.");
                 }
                 else
                 {
-                    MessageBox.Show(BGErrorMessage);
+                    MessageBoxEx.Show(this, BGErrorMessage);
                 }
             }
         }
@@ -216,7 +246,7 @@ namespace FlickrAlbumSort
             }
             if (enabledCount == 0)
             {
-                MessageBox.Show("No albums enabled to sort");
+                MessageBoxEx.Show(this, "No albums enabled to sort");
                 return false;
             }
 
@@ -250,7 +280,7 @@ namespace FlickrAlbumSort
             AccountUser = (User)cbLoginAccount.SelectedItem;
             if (AccountUser == null)
             {
-                MessageBox.Show("No account selected");
+                MessageBoxEx.Show(this, "No account selected");
                 return;
             }
             PhotosetList = new SortableBindingList<Photoset>();
@@ -264,7 +294,7 @@ namespace FlickrAlbumSort
             {
                 if (!String.IsNullOrWhiteSpace(BGErrorMessage))
                 {
-                    MessageBox.Show(BGErrorMessage);
+                    MessageBoxEx.Show(this, BGErrorMessage);
                 }
                 else
                 {
@@ -633,7 +663,7 @@ namespace FlickrAlbumSort
         {
             if (!String.IsNullOrWhiteSpace(BGErrorMessage))
             {
-                MessageBox.Show(BGErrorMessage);
+                MessageBoxEx.Show(this, BGErrorMessage);
             }
         }
 
@@ -642,12 +672,12 @@ namespace FlickrAlbumSort
             var user = (User)cbLoginAccount.SelectedItem;
             if (user == null)
             {
-                MessageBox.Show("No user selected.");
+                MessageBoxEx.Show(this, "No user selected.");
             }
             else
             {
-                DialogResult result = MessageBox.Show("Remove the login account '" + user.CombinedName + "'?",
-                    "FlickrAlbumSort", MessageBoxButtons.OKCancel);
+                DialogResult result = MessageBoxEx.Show(this, "Remove the login account '" + user.CombinedName + "'?",
+                    MessageBoxButtons.OKCancel);
                 if (result == DialogResult.OK)
                 {
                     Settings.RemoveFlickrLoginAccountName(user);
